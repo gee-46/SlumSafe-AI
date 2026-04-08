@@ -28,20 +28,6 @@ from streamlit_js_eval import streamlit_js_eval, get_geolocation
 # This calls the browser's native Geolocation API in a non-sandboxed way
 loc = get_geolocation()
 
-# --- Load Emergency Contacts ---
-EMERGENCY_DATA_FILE = os.path.join(BASE_DIR, "data", "emergency_contacts.csv")
-def get_nearest_responder(u_lat, u_lon):
-    if not os.path.exists(EMERGENCY_DATA_FILE):
-        return None
-    try:
-        e_df = pd.read_csv(EMERGENCY_DATA_FILE)
-        # Use Euclidean distance for simplicity
-        e_df['dist'] = np.sqrt((e_df['latitude'] - u_lat)**2 + (e_df['longitude'] - u_lon)**2)
-        return e_df.sort_values('dist').iloc[0]
-    except Exception:
-        return None
-
-
 
 # --- Custom CSS for Premium Design Aesthetics ---
 st.markdown("""
@@ -453,50 +439,3 @@ with st.container():
         num_points = 1200 if is_high_risk else 300
         df_map = pd.DataFrame({'lat': np.random.randn(num_points) * spread + lat, 'lon': np.random.randn(num_points) * spread + lon}) if not has_data else df_filtered[['latitude', 'longitude']].rename(columns={'latitude': 'lat', 'longitude': 'lon'})
         st.map(df_map, zoom=11, use_container_width=True)
-
-# --- NEW: Location-Based Emergency Contact Feature ---
-# Calculate this on every rerun to ensure 'Manual Simulation' works instantly
-u_lat = loc['coords']['latitude'] if (loc and 'coords' in loc) else lat
-u_lon = loc['coords']['longitude'] if (loc and 'coords' in loc) else lon
-responder = get_nearest_responder(u_lat, u_lon)
-is_gps_tracked = (loc is not None and 'coords' in loc)
-
-# Show SOS button if Risk is High (either from prediction OR if user is exploring a night-time scenario)
-is_dangerous_time = (hour >= 21 or hour <= 5)
-should_show_sos = (st.session_state.prediction_made and risk_level == 2) or (is_dangerous_time and (city != "Custom (Chicago / Other)"))
-
-if should_show_sos:
-    st.markdown("<hr>", unsafe_allow_html=True)
-    st.markdown("<h3 style='color: #ff6b6b; font-weight: 600; margin-bottom: 1rem;'>🚨 Local Emergency Contact</h3>", unsafe_allow_html=True)
-
-    
-    if responder is not None:
-        st.markdown(f"""
-        <a href="tel:{responder['phone']}" style="text-decoration: none;">
-            <div style="background: linear-gradient(90deg, #dc3545, #b02a37); 
-                        color: white; padding: 25px; border-radius: 12px; 
-                        text-align: center; box-shadow: 0 10px 40px rgba(220, 53, 69, 0.4); 
-                        cursor: pointer; transition: all 0.3s ease; border: 2px solid rgba(255,255,255,0.2);">
-                <h2 style="color: white; margin: 0; font-weight: 900; letter-spacing: 2px;">🆘 SOS: CALL {responder['contact_name'].upper()}</h2>
-                <div style="font-size: 0.85rem; color: rgba(255,255,255,0.8); margin-top: 5px; font-weight: 600;">
-                    {'📍 LIVE GPS DETECTED' if is_gps_tracked else '🗺️ SYNCED TO MAP'} | NEAREST HUB: {responder['area'].upper()}
-                </div>
-                <div style="font-size: 0.75rem; color: #ffc107; margin-top: 8px; text-decoration: underline; cursor: pointer;">
-                    (Tap to force location refresh if incorrect)
-                </div>
-            </div>
-        </a>
-        
-        <style>
-            div:hover {{ transform: scale(1.02); filter: brightness(1.1); }}
-        </style>
-        """, unsafe_allow_html=True)
-    else:
-        # Fallback if no CSV or match found
-        st.markdown("""
-        <div style="background: rgba(255, 255, 255, 0.05); border: 1px dashed rgba(255,255,255,0.2); 
-                    border-radius: 10px; padding: 20px; text-align: center;">
-            <p style="margin: 0; color: #a0aec0;">No local responders found for your specific area. Please use the general emergency helpline below.</p>
-        </div>
-        """, unsafe_allow_html=True)
-
