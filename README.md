@@ -72,12 +72,13 @@ This creates critical challenges:
 
 * Interactive heatmap using Folium
 * Converts predictions into intuitive insights
+* Seamless "Quick Jump" navigation across global hotspots (Mumbai, Bangalore, Goa)
 
 ---
 
 ### 📢 3. Participatory Data Generation
 
-* Anonymous reporting system
+* Instant **1-Tap** Anonymous reporting system (No typing required)
 * Encourages community contribution
 * Reduces underreporting
 
@@ -127,7 +128,8 @@ Limited Data → Prediction → User Reports → More Data → Better Prediction
 
 ### 📢 Anonymous Reporting
 
-* Simple form-based reporting
+* Instant **1-Tap interface** for reporting incidents dynamically
+* Automatically captures and maps location/timestamp directly to heatmap
 * Stores data locally (CSV)
 
 ---
@@ -149,7 +151,7 @@ Limited Data → Prediction → User Reports → More Data → Better Prediction
 ## 🔁 How It Works
 
 ```text
-User Input (Location + Time)
+User Input (Location + Time) 
         ↓
 Data Processing
         ↓
@@ -159,7 +161,7 @@ Risk Classification
         ↓
 Heatmap Visualization + Alerts
         ↓
-Anonymous Reporting
+1-Tap Anonymous Reporting
         ↓
 Continuous Improvement
 ```
@@ -186,6 +188,11 @@ slumsafe-ai/
 ├── app.py
 ├── requirements.txt
 ├── README.md
+│
+├── scripts/
+│   ├── crime_model.py
+│   ├── fetch_chicago.py
+│   └── gen_india_data.py
 │
 ├── model/
 │   └── model.pkl
