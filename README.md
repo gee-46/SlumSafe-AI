@@ -242,7 +242,7 @@ streamlit run app.py
 
 ---
 
-### 👨‍💻 Team Members
+### 👨💻 Team Members
 
 * **Aniroshgouda Ramanagoudar** *(Team Leader)*
 * **Gautam N Chipkar**
