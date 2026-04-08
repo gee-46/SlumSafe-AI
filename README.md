@@ -101,7 +101,7 @@ Limited Data → Prediction → User Reports → More Data → Better Prediction
 ## 🖥️ UI Preview
 
 <p align="center">
-  <img src="YOUR_UI_IMAGE_LINK_HERE" width="800"/>
+  <img src="UI-preview.jpeg" width="800"/>
 </p>
 
 ---
