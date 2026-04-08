@@ -207,8 +207,8 @@ slumsafe-ai/
 ## 🚀 Getting Started
 
 ```bash
-git clone https://github.com/your-username/slumsafe-ai.git
-cd slumsafe-ai
+git clone https://github.com/gee-46/SlumSafe-AI.git
+cd SlumSafe-AI
 pip install -r requirements.txt
 streamlit run app.py
 ```
