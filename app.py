@@ -4,6 +4,7 @@ import numpy as np
 import os
 import pickle
 import datetime
+import math
 import datetime
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -22,6 +23,32 @@ if 'risk_level' not in st.session_state:
     st.session_state.risk_level = 0
 if 'report_success' not in st.session_state:
     st.session_state.report_success = False
+if 'nearest_ngo' not in st.session_state:
+    st.session_state.nearest_ngo = None
+
+# --- Helper Functions ---
+def haversine(lat1, lon1, lat2, lon2):
+    R = 6371  # Earth radius in km
+    d_lat = math.radians(lat2 - lat1)
+    d_lon = math.radians(lon2 - lon1)
+    a = (math.sin(d_lat / 2)**2 +
+         math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(d_lon / 2)**2)
+    c = 2 * math.asin(math.sqrt(a))
+    return R * c
+
+def find_nearest_ngo(user_lat, user_lon):
+    ngos_file = os.path.join(BASE_DIR, "data", "ngos.csv")
+    if not os.path.exists(ngos_file):
+        return None
+    try:
+        ngos_df = pd.read_csv(ngos_file)
+        if ngos_df.empty:
+            return None
+        ngos_df['distance'] = ngos_df.apply(lambda row: haversine(user_lat, user_lon, row['latitude'], row['longitude']), axis=1)
+        nearest = ngos_df.sort_values(by='distance').iloc[0]
+        return nearest.to_dict()
+    except:
+        return None
 
 # --- Geolocation via JS Eval ---
 from streamlit_js_eval import streamlit_js_eval, get_geolocation
@@ -206,7 +233,22 @@ with st.sidebar:
     
     if st.session_state.get('report_success'):
         st.success("✅ Report securely submitted with live GPS!")
+        
+        # Display nearest NGO contact if available
+        ngo = st.session_state.get('nearest_ngo')
+        if ngo:
+            st.markdown(f"""
+            <div style="background: rgba(25, 135, 84, 0.1); border: 1px solid #198754; border-radius: 10px; padding: 15px; margin-bottom: 20px;">
+                <h5 style="color: #51cf66; margin: 0 0 10px 0; font-size: 1rem;">🛡️ Nearest NGO Identified</h5>
+                <p style="margin: 0; font-size: 0.9em; color: #f0f4f8;"><b>{ngo['name']}</b> ({ngo['category']})</p>
+                <div style="margin-top: 10px;">
+                    <a href="tel:{ngo['phone']}" style="background-color: #198754; color: white; padding: 6px 12px; border-radius: 6px; text-decoration: none; font-size: 0.85em; font-weight: 600;">📞 Call NGO</a>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        
         st.session_state.report_success = False
+        st.session_state.nearest_ngo = None
         
     st.markdown("<p style='color: #a0aec0; font-size: 0.85em; margin-bottom: 1rem;'>1-Tap Community Reporting (Live GPS)</p>", unsafe_allow_html=True)
     
@@ -235,6 +277,9 @@ with st.sidebar:
             new_report.to_csv(reports_file, index=False)
         else:
             new_report.to_csv(reports_file, mode='a', header=False, index=False)
+            
+        # Identify nearest NGO
+        st.session_state.nearest_ngo = find_nearest_ngo(report_lat, report_lon)
         st.session_state.report_success = True
             
     col1, col2, col3 = st.columns(3)
