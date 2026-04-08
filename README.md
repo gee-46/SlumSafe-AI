@@ -183,11 +183,13 @@ Continuous Improvement
 ## 📂 Project Structure
 
 ```bash
-slumsafe-ai/
+SlumSafe-AI/
 │
 ├── app.py
 ├── requirements.txt
 ├── README.md
+├── LICENSE
+├── UI-preview.jpeg
 │
 ├── scripts/
 │   ├── crime_model.py
@@ -197,9 +199,11 @@ slumsafe-ai/
 ├── model/
 │   └── model.pkl
 │
-├── data/
-│   ├── crime_data.csv
-│   └── reports.csv
+└── data/
+    ├── crime_data.csv
+    ├── ngos.csv
+    ├── emergency_contacts.csv
+    └── reports.csv
 ```
 
 ---
