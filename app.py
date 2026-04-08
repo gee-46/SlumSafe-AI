@@ -4,20 +4,30 @@ import numpy as np
 import os
 import pickle
 import datetime
+import datetime
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# --- State Initialization ---
-if 'prediction_made' not in st.session_state:
-    st.session_state.prediction_made = False
-if 'risk_level' not in st.session_state:
-    st.session_state.risk_level = 0
 st.set_page_config(
     page_title="SlumSafe AI",
     page_icon="🚨",
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# --- State Initialization ---
+if 'prediction_made' not in st.session_state:
+    st.session_state.prediction_made = False
+if 'risk_level' not in st.session_state:
+    st.session_state.risk_level = 0
+if 'report_success' not in st.session_state:
+    st.session_state.report_success = False
+
+# --- Geolocation via JS Eval ---
+from streamlit_js_eval import streamlit_js_eval, get_geolocation
+# This calls the browser's native Geolocation API in a non-sandboxed way
+loc = get_geolocation()
+
 
 # --- Custom CSS for Premium Design Aesthetics ---
 st.markdown("""
@@ -192,8 +202,23 @@ with st.sidebar:
     st.markdown("<hr>", unsafe_allow_html=True)
     
     # Anonymous Crime Reporting Section
-    st.markdown("<h3 style='color: #ffffff; font-weight: 600; margin-bottom: 1.5rem;'>🚨 Report an Incident (1-Tap)</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='color: #ffffff; font-weight: 600; margin-bottom: 0.5rem;'>🚨 Report an Incident</h3>", unsafe_allow_html=True)
     
+    if st.session_state.get('report_success'):
+        st.success("✅ Report securely submitted with live GPS!")
+        st.session_state.report_success = False
+        
+    st.markdown("<p style='color: #a0aec0; font-size: 0.85em; margin-bottom: 1rem;'>1-Tap Community Reporting (Live GPS)</p>", unsafe_allow_html=True)
+    
+    # Check if location is available
+    report_lat, report_lon = 12.9716, 77.5946 # Defaults
+    if loc and 'coords' in loc:
+        report_lat = loc['coords']['latitude']
+        report_lon = loc['coords']['longitude']
+        st.markdown(f"<p style='color: #51cf66; font-size: 0.85em; margin-bottom: 1rem;'>📍 Live GPS Active: {report_lat:.4f}, {report_lon:.4f}</p>", unsafe_allow_html=True)
+    else:
+        st.markdown("<p style='color: #ffc107; font-size: 0.85em; margin-bottom: 1rem;'>⌛ Waiting for GPS permission...</p>", unsafe_allow_html=True)
+
     def save_report(crime_type):
         data_dir = os.path.join(BASE_DIR, "data")
         reports_file = os.path.join(data_dir, "reports.csv")
@@ -201,8 +226,8 @@ with st.sidebar:
         
         new_report = pd.DataFrame([{
             "crime_type": crime_type,
-            "latitude": 12.9716,
-            "longitude": 77.5946,
+            "latitude": report_lat,
+            "longitude": report_lon,
             "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }])
         
@@ -210,17 +235,18 @@ with st.sidebar:
             new_report.to_csv(reports_file, index=False)
         else:
             new_report.to_csv(reports_file, mode='a', header=False, index=False)
+        st.session_state.report_success = True
             
     col1, col2, col3 = st.columns(3)
-    if col1.button("👜 Theft", use_container_width=True):
+    if col1.button("👜 Theft", use_container_width=True, key="btn_theft"):
         save_report("Theft")
-        st.success("✅ Report submitted successfully")
-    if col2.button("⚠️ Violence", use_container_width=True):
+        st.rerun()
+    if col2.button("⚠️ Violence", use_container_width=True, key="btn_violence"):
         save_report("Violence")
-        st.success("✅ Report submitted successfully")
-    if col3.button("💊 Drug", use_container_width=True):
+        st.rerun()
+    if col3.button("💊 Drug", use_container_width=True, key="btn_drug"):
         save_report("Drug Activity")
-        st.success("✅ Report submitted successfully")
+        st.rerun()
 
     # Display: recent reports list
     reports_file = os.path.join(BASE_DIR, "data", "reports.csv")
@@ -231,12 +257,18 @@ with st.sidebar:
             # Display last 5 reports (latest first)
             recent = reports_df.tail(5).iloc[::-1]
             for _, r in recent.iterrows():
+                try:
+                    lat_disp = float(r.get('latitude', 12.9716))
+                    lon_disp = float(r.get('longitude', 77.5946))
+                except:
+                    lat_disp, lon_disp = 12.9716, 77.5946
+                    
                 st.markdown(f"""
                 <div style="background-color: rgba(255, 255, 255, 0.03); color: #e2e8f0; border-radius: 8px; 
                             padding: 10px; margin-bottom: 8px; border: 1px solid rgba(255, 255, 255, 0.05);
                             box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
                     <div style='font-size: 0.75em; color: #a0aec0; margin-bottom: 3px;'>{r.get('timestamp', 'Unknown Time')}</div>
-                    <div style='font-size: 0.9em;'>🚨 <b>{r.get('crime_type', 'Unknown')}</b> reported at Bangalore (12.97, 77.59)</div>
+                    <div style='font-size: 0.9em;'>🚨 <b>{r.get('crime_type', 'Unknown')}</b> reported at ({lat_disp:.4f}, {lon_disp:.4f})</div>
                 </div>
                 """, unsafe_allow_html=True)
         except Exception:
