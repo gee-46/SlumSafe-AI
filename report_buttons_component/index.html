@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .btn-container {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .report-btn {
+            flex: 1;
+            padding: 10px 5px;
+            background: linear-gradient(90deg, #0d6efd, #0043a8);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .report-btn:hover {
+            background: linear-gradient(90deg, #0b5ed7, #003688);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="btn-container">
+        <button class="report-btn" onclick="submitReport('Theft')">👜 Theft</button>
+        <button class="report-btn" onclick="submitReport('Violence')">⚠️ Violence</button>
+        <button class="report-btn" onclick="submitReport('Drug Activity')">💊 Drug</button>
+    </div>
+
+    <script>
+        // Streamlit Component API Definition
+        function sendMessageToStreamlitClient(type, data) {
+            const outData = Object.assign({
+                isStreamlitMessage: true,
+                type: type,
+            }, data);
+            window.parent.postMessage(outData, "*");
+        }
+
+        function init() {
+            sendMessageToStreamlitClient("streamlit:setComponentReady", { apiVersion: 1 });
+        }
+
+        function setFrameHeight(height) {
+            sendMessageToStreamlitClient("streamlit:setFrameHeight", { height: height });
+        }
+
+        function sendValue(value) {
+            sendMessageToStreamlitClient("streamlit:setComponentValue", { value: value });
+        }
+
+        window.addEventListener("message", function (event) {
+            if (event.data.type === "streamlit:render") {
+                setFrameHeight(55); // Lock height so no scrollbars appear
+            }
+        });
+
+        init(); // Ready to go
+
+        // Form logic
+        function submitReport(crimeType) {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        sendValue({ crime: crimeType, lat: pos.coords.latitude, lon: pos.coords.longitude });
+                    },
+                    (err) => {
+                        // Fallback
+                        sendValue({ crime: crimeType, lat: 12.9716, lon: 77.5946 });
+                    }
+                );
+            } else {
+                sendValue({ crime: crimeType, lat: 12.9716, lon: 77.5946 });
+            }
+        }
+    </script>
+</body>
+
+</html>

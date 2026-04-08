@@ -28,6 +28,20 @@ from streamlit_js_eval import streamlit_js_eval, get_geolocation
 # This calls the browser's native Geolocation API in a non-sandboxed way
 loc = get_geolocation()
 
+# --- Load Emergency Contacts ---
+EMERGENCY_DATA_FILE = os.path.join(BASE_DIR, "data", "emergency_contacts.csv")
+def get_nearest_responder(u_lat, u_lon):
+    if not os.path.exists(EMERGENCY_DATA_FILE):
+        return None
+    try:
+        e_df = pd.read_csv(EMERGENCY_DATA_FILE)
+        # Use Euclidean distance for simplicity
+        e_df['dist'] = np.sqrt((e_df['latitude'] - u_lat)**2 + (e_df['longitude'] - u_lon)**2)
+        return e_df.sort_values('dist').iloc[0]
+    except Exception:
+        return None
+
+
 
 # --- Custom CSS for Premium Design Aesthetics ---
 st.markdown("""
@@ -439,3 +453,41 @@ with st.container():
         num_points = 1200 if is_high_risk else 300
         df_map = pd.DataFrame({'lat': np.random.randn(num_points) * spread + lat, 'lon': np.random.randn(num_points) * spread + lon}) if not has_data else df_filtered[['latitude', 'longitude']].rename(columns={'latitude': 'lat', 'longitude': 'lon'})
         st.map(df_map, zoom=11, use_container_width=True)
+
+# --- NEW: Location-Based Emergency Contact Feature ---
+if st.session_state.prediction_made and risk_level == 2:
+    st.markdown("<hr>", unsafe_allow_html=True)
+    st.markdown("<h3 style='color: #ff6b6b; font-weight: 600; margin-bottom: 1rem;'>🚨 Local Emergency Contact</h3>", unsafe_allow_html=True)
+    
+    # Prioritize the location currently being viewed/predicted on the map
+    # This ensures that when a user "Quick Jumps" to Mumbai, they see Mumbai help.
+    u_lat, u_lon = lat, lon
+    responder = get_nearest_responder(u_lat, u_lon)
+    
+    if responder is not None:
+        st.markdown(f"""
+        <div style="background: rgba(220, 53, 69, 0.1); border: 2px solid #dc3545; border-radius: 12px; 
+                    padding: 20px; box-shadow: 0 10px 30px rgba(220, 53, 69, 0.2); backdrop-filter: blur(10px);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h4 style="color: #ffc107; margin: 0; font-size: 1.25rem;">{responder['contact_name']}</h4>
+                    <p style="color: #e2e8f0; margin: 5px 0 0 0; font-size: 0.95rem;">Nearest responder for area: <b>{responder['area']}</b></p>
+                    <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 1.15rem; font-weight: 700;">📞 {responder['phone']}</p>
+                </div>
+                <a href="tel:{responder['phone']}" style="text-decoration: none;">
+                    <div style="background: #dc3545; color: white; padding: 12px 25px; border-radius: 8px; font-weight: 800; cursor: pointer; transition: 0.3s; text-transform: uppercase; letter-spacing: 1px;">
+                        Call Now
+                    </div>
+                </a>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        # Fallback if no CSV or match found
+        st.markdown("""
+        <div style="background: rgba(255, 255, 255, 0.05); border: 1px dashed rgba(255,255,255,0.2); 
+                    border-radius: 10px; padding: 20px; text-align: center;">
+            <p style="margin: 0; color: #a0aec0;">No local responders found for your specific area. Please use the general emergency helpline below.</p>
+        </div>
+        """, unsafe_allow_html=True)
+
