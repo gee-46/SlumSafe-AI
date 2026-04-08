@@ -481,8 +481,12 @@ if should_show_sos:
                 <div style="font-size: 0.85rem; color: rgba(255,255,255,0.8); margin-top: 5px; font-weight: 600;">
                     {'📍 LIVE GPS DETECTED' if is_gps_tracked else '🗺️ SYNCED TO MAP'} | NEAREST HUB: {responder['area'].upper()}
                 </div>
+                <div style="font-size: 0.75rem; color: #ffc107; margin-top: 8px; text-decoration: underline; cursor: pointer;">
+                    (Tap to force location refresh if incorrect)
+                </div>
             </div>
         </a>
+        
         <style>
             div:hover {{ transform: scale(1.02); filter: brightness(1.1); }}
         </style>
