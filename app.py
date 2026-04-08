@@ -10,8 +10,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # --- State Initialization ---
 if 'prediction_made' not in st.session_state:
     st.session_state.prediction_made = False
-if 'is_high_risk' not in st.session_state:
-    st.session_state.is_high_risk = False
+if 'risk_level' not in st.session_state:
+    st.session_state.risk_level = 0
 st.set_page_config(
     page_title="SlumSafe AI",
     page_icon="🚨",
@@ -148,40 +148,46 @@ with st.sidebar:
                 prediction = model.predict(input_df)
                 
                 # model logic: 2 is High, 1 is Medium, 0 is Low
-                # We group High and Medium together as 'High Risk' for this binary UI
-                st.session_state.is_high_risk = bool(prediction[0] >= 1)
+                st.session_state.risk_level = int(prediction[0])
             except Exception as e:
                 st.sidebar.error(f"Error executing model: {e}")
-                # Reliable fallback to prevent local crashes
-                st.session_state.is_high_risk = (hour >= 20) or (hour <= 4)
+                st.session_state.risk_level = 2 if ((hour >= 20) or (hour <= 4)) else (1 if 18 <= hour <= 21 else 0)
         else:
-            # Fallback simulated logic if the physical .pkl file is not placed yet
-            st.session_state.is_high_risk = (hour >= 20) or (hour <= 4)
+            st.session_state.risk_level = 2 if ((hour >= 20) or (hour <= 4)) else (1 if 18 <= hour <= 21 else 0)
 
     # Sync variable for display logic below
-    is_high_risk = st.session_state.is_high_risk
+    risk_level = st.session_state.risk_level
+    is_high_risk = (risk_level >= 1) # Keep legacy flag mapping for Heatmap
     
     # Render Colored Result Box dynamically based on the prediction
-    if st.session_state.prediction_made and is_high_risk:
-        st.markdown("""
-        <div style="background: linear-gradient(135deg, rgba(220, 53, 69, 0.9), rgba(150, 20, 40, 0.8)); 
-                    color: white; border-radius: 12px; padding: 18px; text-align: center; 
-                    box-shadow: 0 8px 25px rgba(220, 53, 69, 0.4); border: 1px solid rgba(255, 100, 100, 0.2); 
-                    margin-bottom: 1rem; transition: transform 0.3s ease;">
-            <h4 style='margin:0 0 5px 0; font-weight: 800; text-transform: uppercase; font-size: 1.1rem; letter-spacing: 1px;'>⚠️ High Risk Area Detected</h4>
-            <p style='margin:0; font-size: 0.95em; opacity: 0.95;'>Action recommended: Exercise caution.</p>
-        </div>
-        """, unsafe_allow_html=True)
-    elif st.session_state.prediction_made and not is_high_risk:
-        st.markdown("""
-        <div style="background: linear-gradient(135deg, rgba(25, 135, 84, 0.9), rgba(15, 90, 50, 0.8)); 
-                    color: white; border-radius: 12px; padding: 18px; text-align: center; 
-                    box-shadow: 0 8px 25px rgba(25, 135, 84, 0.4); border: 1px solid rgba(100, 255, 150, 0.2); 
-                    margin-bottom: 1rem; transition: transform 0.3s ease;">
-            <h4 style='margin:0 0 5px 0; font-weight: 800; text-transform: uppercase; font-size: 1.1rem; letter-spacing: 1px;'>✅ Low Risk Area Detected</h4>
-            <p style='margin:0; font-size: 0.95em; opacity: 0.95;'>Safe environment confirmed.</p>
-        </div>
-        """, unsafe_allow_html=True)
+    if st.session_state.prediction_made:
+        if risk_level == 2:
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, rgba(220, 53, 69, 0.9), rgba(150, 20, 40, 0.8)); 
+                        color: white; border-radius: 12px; padding: 18px; text-align: center; 
+                        box-shadow: 0 8px 25px rgba(220, 53, 69, 0.4); border: 1px solid rgba(255, 100, 100, 0.2); 
+                        margin-bottom: 1rem; transition: transform 0.3s ease;">
+                <h4 style='margin:0 0 5px 0; font-weight: 800; text-transform: uppercase; font-size: 1.05rem; letter-spacing: 1px;'>⚠️ High Risk Area Detected</h4>
+            </div>
+            """, unsafe_allow_html=True)
+        elif risk_level == 1:
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, rgba(255, 193, 7, 0.9), rgba(200, 140, 0, 0.8)); 
+                        color: white; border-radius: 12px; padding: 18px; text-align: center; 
+                        box-shadow: 0 8px 25px rgba(255, 193, 7, 0.4); border: 1px solid rgba(255, 200, 50, 0.2); 
+                        margin-bottom: 1rem; transition: transform 0.3s ease;">
+                <h4 style='margin:0 0 5px 0; font-weight: 800; text-transform: uppercase; font-size: 1.05rem; letter-spacing: 1px;'>⚠️ Medium Risk Area</h4>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, rgba(25, 135, 84, 0.9), rgba(15, 90, 50, 0.8)); 
+                        color: white; border-radius: 12px; padding: 18px; text-align: center; 
+                        box-shadow: 0 8px 25px rgba(25, 135, 84, 0.4); border: 1px solid rgba(100, 255, 150, 0.2); 
+                        margin-bottom: 1rem; transition: transform 0.3s ease;">
+                <h4 style='margin:0 0 5px 0; font-weight: 800; text-transform: uppercase; font-size: 1.05rem; letter-spacing: 1px;'>✅ Low Risk Area Detected</h4>
+            </div>
+            """, unsafe_allow_html=True)
     
     st.markdown("<hr>", unsafe_allow_html=True)
     
@@ -244,37 +250,79 @@ with st.sidebar:
         
 # --- Main Panel Content ---
 
-# Alert Banner container logic (Show only if prediction made)
-if st.session_state.prediction_made and is_high_risk:
-    st.markdown("""
-    <div style="background: rgba(220, 53, 69, 0.15); border-left: 6px solid #dc3545; padding: 1.25rem 1.5rem; 
-                border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.2); margin-bottom: 2.5rem;
-                backdrop-filter: blur(10px); border-right: 1px solid rgba(255,255,255,0.05); 
-                border-top: 1px solid rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.05);">
-        <div style="display: flex; align-items: center;">
-            <span style="font-size: 2rem; margin-right: 20px; filter: drop-shadow(0 2px 5px rgba(220,53,69,0.5));">🚨</span>
-            <div>
-                <h4 style="color: #ff6b6b; margin: 0 0 5px 0; font-weight: 800; font-size: 1.2rem;">Danger Zone</h4>
-                <p style="color: #f0f4f8; margin: 0; font-size: 1.05rem; opacity: 0.9;">High Risk Area Detected in this location</p>
+# Alert Banner and Recommended Actions logic
+if st.session_state.prediction_made:
+    if risk_level == 2:
+        banner_html = """
+        <div style="background: rgba(220, 53, 69, 0.15); border-left: 6px solid #dc3545; padding: 1.25rem 1.5rem; 
+                    border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.2); margin-bottom: 1rem;
+                    backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05);">
+            <div style="display: flex; align-items: center;">
+                <span style="font-size: 2rem; margin-right: 20px;">🚨</span>
+                <div>
+                    <h4 style="color: #ff6b6b; margin: 0 0 5px 0; font-weight: 800; font-size: 1.2rem;">Danger Zone: High Risk</h4>
+                    <p style="color: #f0f4f8; margin: 0; font-size: 1.05rem; opacity: 0.9;">Urgent action required.</p>
+                </div>
             </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-elif st.session_state.prediction_made and not is_high_risk:
-    st.markdown("""
-    <div style="background: rgba(25, 135, 84, 0.15); border-left: 6px solid #198754; padding: 1.25rem 1.5rem; 
-                border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.2); margin-bottom: 2.5rem;
-                backdrop-filter: blur(10px); border-right: 1px solid rgba(255,255,255,0.05); 
-                border-top: 1px solid rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.05);">
-        <div style="display: flex; align-items: center;">
-            <span style="font-size: 2rem; margin-right: 20px; filter: drop-shadow(0 2px 5px rgba(25,135,84,0.5));">🛡️</span>
-            <div>
-                <h4 style="color: #51cf66; margin: 0 0 5px 0; font-weight: 800; font-size: 1.2rem;">Safe Zone</h4>
-                <p style="color: #f0f4f8; margin: 0; font-size: 1.05rem; opacity: 0.9;">Low Risk Area Detected in this location</p>
+        </div>"""
+        action_html = """
+        <div style="background: rgba(220, 53, 69, 0.05); border-left: 4px solid #dc3545; padding: 1rem 1.5rem; 
+                    border-radius: 8px; margin-bottom: 2.5rem; border: 1px solid rgba(220, 53, 69, 0.3);">
+            <h4 style="color: #ff6b6b; margin: 0 0 10px 0;">📋 Recommended Actions</h4>
+            <ul style="color: #f0f4f8; margin: 0; padding-left: 20px; line-height: 1.6;">
+                <li>Increase police patrolling immediately</li>
+                <li>Deploy rapid response teams to the area</li>
+                <li>Activate emergency contact alerts for residents</li>
+            </ul>
+        </div>"""
+    elif risk_level == 1:
+        banner_html = """
+        <div style="background: rgba(255, 193, 7, 0.15); border-left: 6px solid #ffc107; padding: 1.25rem 1.5rem; 
+                    border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.2); margin-bottom: 1rem;
+                    backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05);">
+            <div style="display: flex; align-items: center;">
+                <span style="font-size: 2rem; margin-right: 20px;">⚠️</span>
+                <div>
+                    <h4 style="color: #ffc107; margin: 0 0 5px 0; font-weight: 800; font-size: 1.2rem;">Warning Zone: Medium Risk</h4>
+                    <p style="color: #f0f4f8; margin: 0; font-size: 1.05rem; opacity: 0.9;">Preventive action recommended.</p>
+                </div>
             </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+        </div>"""
+        action_html = """
+        <div style="background: rgba(255, 193, 7, 0.05); border-left: 4px solid #ffc107; padding: 1rem 1.5rem; 
+                    border-radius: 8px; margin-bottom: 2.5rem; border: 1px solid rgba(255, 193, 7, 0.3);">
+            <h4 style="color: #ffc107; margin: 0 0 10px 0;">📋 Recommended Actions</h4>
+            <ul style="color: #f0f4f8; margin: 0; padding-left: 20px; line-height: 1.6;">
+                <li>Increase monitoring of key hotspots</li>
+                <li>Conduct community awareness programs</li>
+                <li>Improve local infrastructure (e.g., street lighting)</li>
+            </ul>
+        </div>"""
+    else:
+        banner_html = """
+        <div style="background: rgba(25, 135, 84, 0.15); border-left: 6px solid #198754; padding: 1.25rem 1.5rem; 
+                    border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.2); margin-bottom: 1rem;
+                    backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05);">
+            <div style="display: flex; align-items: center;">
+                <span style="font-size: 2rem; margin-right: 20px;">🛡️</span>
+                <div>
+                    <h4 style="color: #51cf66; margin: 0 0 5px 0; font-weight: 800; font-size: 1.2rem;">Safe Zone: Low Risk</h4>
+                    <p style="color: #f0f4f8; margin: 0; font-size: 1.05rem; opacity: 0.9;">Routine monitoring.</p>
+                </div>
+            </div>
+        </div>"""
+        action_html = """
+        <div style="background: rgba(25, 135, 84, 0.05); border-left: 4px solid #198754; padding: 1rem 1.5rem; 
+                    border-radius: 8px; margin-bottom: 2.5rem; border: 1px solid rgba(25, 135, 84, 0.3);">
+            <h4 style="color: #51cf66; margin: 0 0 10px 0;">📋 Recommended Actions</h4>
+            <ul style="color: #f0f4f8; margin: 0; padding-left: 20px; line-height: 1.6;">
+                <li>Maintain routine surveillance and reporting</li>
+                <li>Monitor trends effectively</li>
+            </ul>
+        </div>"""
+
+    st.markdown(banner_html, unsafe_allow_html=True)
+    st.markdown(action_html, unsafe_allow_html=True)
 
 
 # Container for the Heatmap visualization

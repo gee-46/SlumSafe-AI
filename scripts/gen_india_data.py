@@ -21,5 +21,14 @@ df_goa = generate_city_data(15.4909, 73.8278, 150)    # Goa
 df_bangalore = generate_city_data(12.9716, 77.5946, 100) # Bangalore
 
 df_all = pd.concat([df_mumbai, df_goa, df_bangalore])
-df_all.to_csv('C:/Users/Dell/.gemini/antigravity/scratch/SlumSafe-AI/data/crime_data.csv', index=False)
-print("Successfully generated custom Indian hotspot dataset!")
+
+import os
+csv_path = 'C:/Users/Dell/.gemini/antigravity/scratch/SlumSafe-AI/data/crime_data.csv'
+if os.path.exists(csv_path):
+    df_existing = pd.read_csv(csv_path)
+    df_combined = pd.concat([df_existing, df_all])
+    df_combined.to_csv(csv_path, index=False)
+    print(f"Successfully merged Indian datasets with existing Chicago dataset! Total rows: {len(df_combined)}")
+else:
+    df_all.to_csv(csv_path, index=False)
+    print("Successfully generated custom Indian hotspot dataset!")
