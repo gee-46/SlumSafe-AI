@@ -5,7 +5,6 @@ import os
 import pickle
 import datetime
 import math
-import datetime
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -187,9 +186,10 @@ with st.sidebar:
                 # model logic: 2 is High, 1 is Medium, 0 is Low
                 st.session_state.risk_level = int(prediction[0])
             except Exception as e:
-                st.sidebar.error(f"Error executing model: {e}")
+                st.sidebar.warning(f"Model error, using rule-based prediction. Details: {e}")
                 st.session_state.risk_level = 2 if ((hour >= 20) or (hour <= 4)) else (1 if 18 <= hour <= 21 else 0)
         else:
+            st.sidebar.warning("Model file not found. Using rule-based fallback prediction.")
             st.session_state.risk_level = 2 if ((hour >= 20) or (hour <= 4)) else (1 if 18 <= hour <= 21 else 0)
 
     # Sync variable for display logic below
@@ -254,6 +254,13 @@ with st.sidebar:
                 </div>
             </div>
             """, unsafe_allow_html=True)
+        elif st.session_state.get('emergency_triggered'):
+            st.markdown(f"""
+            <div style="background: rgba(220, 53, 69, 0.1); border: 1px solid #dc3545; border-radius: 10px; padding: 15px; margin-bottom: 20px;">
+                <h5 style="color: #ff6b6b; margin: 0 0 10px 0; font-size: 1rem;">⚠️ No NGO Found</h5>
+                <p style="margin: 0; font-size: 0.9em; color: #f0f4f8;">Could not locate a nearby NGO. Please dial emergency services directly.</p>
+            </div>
+            """, unsafe_allow_html=True)
         
         st.session_state.report_success = False
         st.session_state.nearest_ngo = None
@@ -293,10 +300,14 @@ with st.sidebar:
             "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }])
         
-        if not os.path.exists(reports_file):
-            new_report.to_csv(reports_file, index=False)
-        else:
-            new_report.to_csv(reports_file, mode='a', header=False, index=False)
+        try:
+            if not os.path.exists(reports_file):
+                new_report.to_csv(reports_file, index=False)
+            else:
+                new_report.to_csv(reports_file, mode='a', header=False, index=False)
+        except Exception as e:
+            st.error(f"Error saving report: {e}")
+            return
             
         # Trigger emergency call and identify nearest NGO ONLY for High Risk
         if severity == "High":
@@ -457,11 +468,15 @@ with st.container():
     data_path = os.path.join(BASE_DIR, "data", "crime_data.csv")
     has_data = os.path.exists(data_path)
     if has_data:
-        # pd is already imported at top level, no need to re-import
-        df = pd.read_csv(data_path)
-        df_filtered = df[(df['hour'] >= hour - 2) & (df['hour'] <= hour + 2)]
-        if df_filtered.empty:
-            df_filtered = df  # Fallback to full view if no crimes in hour block
+        try:
+            # pd is already imported at top level, no need to re-import
+            df = pd.read_csv(data_path)
+            df_filtered = df[(df['hour'] >= hour - 2) & (df['hour'] <= hour + 2)]
+            if df_filtered.empty:
+                df_filtered = df  # Fallback to full view if no crimes in hour block
+        except Exception as e:
+            st.error(f"Error loading crime data for heatmap: {e}")
+            has_data = False
             
     # Try rendering the high-performance Folium Heatmap
     try:
