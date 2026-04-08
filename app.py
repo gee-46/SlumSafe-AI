@@ -233,6 +233,11 @@ with st.sidebar:
     
     if st.session_state.get('report_success'):
         st.success("✅ Report securely submitted with live GPS!")
+
+        if st.session_state.get('emergency_triggered'):
+            st.error("🚨 High Risk Alert: Calling emergency contact...")
+            st.markdown("<div style='text-align: center; margin-top: 10px; margin-bottom: 15px;'><a href='tel:+91XXXXXXXXXX' style='color: #ff6b6b; font-weight: bold; font-size: 1.2rem; text-decoration: none;'>📞 +91XXXXXXXXXX</a></div>", unsafe_allow_html=True)
+            st.session_state.emergency_triggered = False
         
         # Display nearest NGO contact if available
         ngo = st.session_state.get('nearest_ngo')
@@ -261,13 +266,13 @@ with st.sidebar:
     else:
         st.markdown("<p style='color: #ffc107; font-size: 0.85em; margin-bottom: 1rem;'>⌛ Waiting for GPS permission...</p>", unsafe_allow_html=True)
 
-    def save_report(crime_type):
+    def save_report(crime_type, severity="Low"):
         data_dir = os.path.join(BASE_DIR, "data")
         reports_file = os.path.join(data_dir, "reports.csv")
         os.makedirs(data_dir, exist_ok=True)
         
         new_report = pd.DataFrame([{
-            "crime_type": crime_type,
+            "crime_type": f"{crime_type} ({severity})",
             "latitude": report_lat,
             "longitude": report_lon,
             "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -278,20 +283,42 @@ with st.sidebar:
         else:
             new_report.to_csv(reports_file, mode='a', header=False, index=False)
             
-        # Identify nearest NGO
-        st.session_state.nearest_ngo = find_nearest_ngo(report_lat, report_lon)
+        # Trigger emergency call and identify nearest NGO ONLY for High Risk
+        if severity == "High":
+            st.session_state.emergency_triggered = True
+            st.session_state.nearest_ngo = find_nearest_ngo(report_lat, report_lon)
+        else:
+            st.session_state.nearest_ngo = None
         st.session_state.report_success = True
-            
-    col1, col2, col3 = st.columns(3)
-    if col1.button("👜 Theft", use_container_width=True, key="btn_theft"):
-        save_report("Theft")
+
+    st.markdown("<p style='color: #51cf66; font-size: 0.9em; margin-bottom: 0.2rem; font-weight: 600;'>🟢 Low Risk</p>", unsafe_allow_html=True)
+    col_l1, col_l2 = st.columns(2)
+    if col_l1.button("🔊 Noise", use_container_width=True, key="btn_noise"):
+        save_report("Noise Complaint", "Low")
         st.rerun()
-    if col2.button("⚠️ Violence", use_container_width=True, key="btn_violence"):
-        save_report("Violence")
+    if col_l2.button("🖍️ Vandalism", use_container_width=True, key="btn_vandalism"):
+        save_report("Vandalism", "Low")
         st.rerun()
-    if col3.button("💊 Drug", use_container_width=True, key="btn_drug"):
-        save_report("Drug Activity")
+
+    st.markdown("<p style='color: #ffc107; font-size: 0.9em; margin-bottom: 0.2rem; margin-top: 0.5rem; font-weight: 600;'>🟡 Medium Risk</p>", unsafe_allow_html=True)
+    col_m1, col_m2 = st.columns(2)
+    if col_m1.button("👜 Theft", use_container_width=True, key="btn_theft"):
+        save_report("Theft", "Medium")
         st.rerun()
+    if col_m2.button("💊 Drug", use_container_width=True, key="btn_drug"):
+        save_report("Drug Activity", "Medium")
+        st.rerun()
+
+    st.markdown("<p style='color: #ff6b6b; font-size: 0.9em; margin-bottom: 0.2rem; margin-top: 0.5rem; font-weight: 600;'>🔴 High Risk</p>", unsafe_allow_html=True)
+    col_h1, col_h2 = st.columns(2)
+    if col_h1.button("⚠️ Violence", use_container_width=True, key="btn_violence"):
+        save_report("Violence", "High")
+        st.rerun()
+    if col_h2.button("🔫 Robbery", use_container_width=True, key="btn_robbery"):
+        save_report("Armed Robbery", "High")
+        st.rerun()
+
+    st.markdown("<div style='background-color: rgba(255, 107, 107, 0.1); border-left: 3px solid #ff6b6b; padding: 8px 12px; margin-top: 15px; border-radius: 4px;'><p style='color: #e2e8f0; font-size: 0.85em; margin: 0; font-style: italic;'><b>* Note:</b> An emergency connection is automatically initiated when you report a <span style='color: #ff6b6b; font-weight: 600;'>High Risk</span> incident.</p></div>", unsafe_allow_html=True)
 
     # Display: recent reports list
     reports_file = os.path.join(BASE_DIR, "data", "reports.csv")
@@ -318,12 +345,7 @@ with st.sidebar:
                 """, unsafe_allow_html=True)
         except Exception:
              pass
-    st.markdown("<hr>", unsafe_allow_html=True)
-    st.markdown("<h3 style='color: #ff6b6b; font-weight: 600; margin-bottom: 1rem;'>Emergency Action</h3>", unsafe_allow_html=True)
-    emergency_clicked = st.button("🚨 Emergency Help", key="emergency_btn")
-    if emergency_clicked:
-        st.error("Calling emergency contact...")
-        st.markdown("<div style='text-align: center; margin-top: 10px;'><a href='tel:+91XXXXXXXXXX' style='color: #ff6b6b; font-weight: bold; font-size: 1.2rem; text-decoration: none;'>📞 +91XXXXXXXXXX</a></div>", unsafe_allow_html=True)
+
         
 # --- Main Panel Content ---
 
