@@ -270,7 +270,7 @@ streamlit run app.py
 
 ---
 
-> “Built with collaboration, speed, and impact in mind.”
+> “Built with collaboration, speed, and impact in mind.” 
 
 ---
 
