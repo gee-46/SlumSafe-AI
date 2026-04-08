@@ -235,7 +235,42 @@ streamlit run app.py
 
 ## 🏆 Hackathon Context
 
-🚀 Built for **InnovateX 4.0 – Build With AI Hackathon**
+
+### 🏷️ Team Name
+
+**PulseX**
+
+---
+
+### 👨‍💻 Team Members
+
+* **Aniroshgouda Ramanagoudar** *(Team Leader)*
+* **Gautam N Chipkar**
+* **Shridharsingh Rajaput**
+* **Basavaraj Basagaudar**
+
+---
+
+### 🤝 Team Roles (Hackathon Execution)
+
+| Member                    | Responsibility                             |
+| ------------------------- | ------------------------------------------ |
+| Aniroshgouda Ramanagoudar | Team Lead, Coordination, Final Integration |
+| Gautam N Chipkar          | AI/ML Model & Data Pipeline                |
+| Shridharsingh Rajaput     | Frontend UI & Visualization                |
+| Basavaraj Basagaudar      | Features, Reporting & Deployment           |
+
+---
+
+### 💡 Collaboration Approach
+
+* Modular development using Git branches
+* Parallel development with structured integration
+* Focus on rapid prototyping and clean execution
+
+---
+
+> “Built with collaboration, speed, and impact in mind.”
 
 ---
 
