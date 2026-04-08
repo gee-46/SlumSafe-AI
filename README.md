@@ -99,7 +99,7 @@ Limited Data → Prediction → User Reports → More Data → Better Prediction
 ---
 
 ## 🖥️ UI Preview
-
+*This UI is a conceptual design created by our team to visualize the system before implementation. It reflects our planned workflow and user experience for the final product.*
 <p align="center">
   <img src="UI-preview.jpeg" width="800"/>
 </p>
