@@ -455,16 +455,20 @@ with st.container():
         st.map(df_map, zoom=11, use_container_width=True)
 
 # --- NEW: Location-Based Emergency Contact Feature ---
-if st.session_state.prediction_made and risk_level == 2:
+# Calculate this on every rerun to ensure 'Manual Simulation' works instantly
+u_lat = loc['coords']['latitude'] if (loc and 'coords' in loc) else lat
+u_lon = loc['coords']['longitude'] if (loc and 'coords' in loc) else lon
+responder = get_nearest_responder(u_lat, u_lon)
+is_gps_tracked = (loc is not None and 'coords' in loc)
+
+# Show SOS button if Risk is High (either from prediction OR if user is exploring a night-time scenario)
+is_dangerous_time = (hour >= 21 or hour <= 5)
+should_show_sos = (st.session_state.prediction_made and risk_level == 2) or (is_dangerous_time and (city != "Custom (Chicago / Other)"))
+
+if should_show_sos:
     st.markdown("<hr>", unsafe_allow_html=True)
     st.markdown("<h3 style='color: #ff6b6b; font-weight: 600; margin-bottom: 1rem;'>🚨 Local Emergency Contact</h3>", unsafe_allow_html=True)
-    
-    # Prioritize TRUE Live GPS for the emergency contact, fallback to sidebar focus
-    u_lat = loc['coords']['latitude'] if (loc and 'coords' in loc) else lat
-    u_lon = loc['coords']['longitude'] if (loc and 'coords' in loc) else lon
-    
-    responder = get_nearest_responder(u_lat, u_lon)
-    is_gps_tracked = (loc is not None and 'coords' in loc)
+
     
     if responder is not None:
         st.markdown(f"""
