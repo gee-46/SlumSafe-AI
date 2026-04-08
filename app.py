@@ -468,24 +468,20 @@ if st.session_state.prediction_made and risk_level == 2:
     
     if responder is not None:
         st.markdown(f"""
-        <div style="background: rgba(220, 53, 69, 0.1); border: 2px solid #dc3545; border-radius: 12px; 
-                    padding: 20px; box-shadow: 0 10px 30px rgba(220, 53, 69, 0.2); backdrop-filter: blur(10px);">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <h4 style="color: #ffc107; margin: 0; font-size: 1.25rem;">{responder['contact_name']}</h4>
-                    <div style="font-size: 0.75rem; color: #51cf66; margin-top: 4px; font-weight: 800;">
-                        {'📍 LIVE GPS TRACKING ACTIVE' if is_gps_tracked else '🗺️ SYNCED TO MAP VIEW'}
-                    </div>
-                    <p style="color: #e2e8f0; margin: 5px 0 0 0; font-size: 0.95rem;">Nearest responder for area: <b>{responder['area']}</b></p>
-                    <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 1.15rem; font-weight: 700;">📞 {responder['phone']}</p>
+        <a href="tel:{responder['phone']}" style="text-decoration: none;">
+            <div style="background: linear-gradient(90deg, #dc3545, #b02a37); 
+                        color: white; padding: 25px; border-radius: 12px; 
+                        text-align: center; box-shadow: 0 10px 40px rgba(220, 53, 69, 0.4); 
+                        cursor: pointer; transition: all 0.3s ease; border: 2px solid rgba(255,255,255,0.2);">
+                <h2 style="color: white; margin: 0; font-weight: 900; letter-spacing: 2px;">🆘 SOS: CALL {responder['contact_name'].upper()}</h2>
+                <div style="font-size: 0.85rem; color: rgba(255,255,255,0.8); margin-top: 5px; font-weight: 600;">
+                    {'📍 LIVE GPS DETECTED' if is_gps_tracked else '🗺️ SYNCED TO MAP'} | NEAREST HUB: {responder['area'].upper()}
                 </div>
-                <a href="tel:{responder['phone']}" style="text-decoration: none;">
-                    <div style="background: #dc3545; color: white; padding: 12px 25px; border-radius: 8px; font-weight: 800; cursor: pointer; transition: 0.3s; text-transform: uppercase; letter-spacing: 1px;">
-                        Call Now
-                    </div>
-                </a>
             </div>
-        </div>
+        </a>
+        <style>
+            div:hover {{ transform: scale(1.02); filter: brightness(1.1); }}
+        </style>
         """, unsafe_allow_html=True)
     else:
         # Fallback if no CSV or match found
