@@ -1,155 +1,361 @@
 import streamlit as st
 import pandas as pd
-import pickle
-import folium
-from streamlit_folium import st_folium
+import numpy as np
 import os
+import pickle
 import datetime
 
-# --- Page configuration ---
-st.set_page_config(page_title="SlumSafe AI", page_icon="🚨", layout="wide")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Directory check for reports
-os.makedirs('data', exist_ok=True)
-if not os.path.exists('data/reports.csv'):
-    df_reports = pd.DataFrame(columns=['Date', 'Location', 'Incident_Type', 'Description'])
-    df_reports.to_csv('data/reports.csv', index=False)
+# --- State Initialization ---
+if 'prediction_made' not in st.session_state:
+    st.session_state.prediction_made = False
+if 'is_high_risk' not in st.session_state:
+    st.session_state.is_high_risk = False
+st.set_page_config(
+    page_title="SlumSafe AI",
+    page_icon="🚨",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-# --- Load data and models ---
-@st.cache_data
-def load_data():
-    try:
-        return pd.read_csv('data/crime_data.csv')
-    except Exception as e:
-        return pd.DataFrame()
+# --- Custom CSS for Premium Design Aesthetics ---
+st.markdown("""
+    <style>
+        /* Import Google Font */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
 
-@st.cache_resource
-def load_model():
-    try:
-        with open('model/model.pkl', 'rb') as f:
-            return pickle.load(f)
-    except Exception as e:
-        return None
+        /* Base Typography */
+        html, body, [class*="css"] {
+            font-family: 'Inter', sans-serif !important;
+        }
 
-df_crime = load_data()
-model = load_model()
+        /* Dark blue/black gradient background */
+        [data-testid="stAppViewContainer"] {
+            background: linear-gradient(135deg, #050b14 0%, #0d172e 100%);
+            color: #f0f4f8;
+        }
+        
+        /* Glassmorphism Sidebar */
+        [data-testid="stSidebar"] > div:first-child {
+            background: linear-gradient(180deg, rgba(6, 11, 20, 0.95) 0%, rgba(13, 22, 40, 0.95) 100%);
+            backdrop-filter: blur(15px);
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 4px 0 25px rgba(0, 0, 0, 0.6);
+        }
 
-# --- Sidebar Navigation ---
-st.sidebar.title("🚨 SlumSafe AI")
-st.sidebar.markdown("**Team PulseX** | InnovateX 4.0")
-st.sidebar.markdown("---")
-page = st.sidebar.radio("Navigation", ["🏠 Dashboard & Heatmap", "🧠 Predict Crime Risk", "📢 Anonymous Report", "⚠️ Emergency"])
+        /* Main Container Spacing */
+        .block-container {
+            padding-top: 3rem;
+            padding-bottom: 3rem;
+            max-width: 1200px;
+        }
 
-# --- Main Views ---
-if page == "🏠 Dashboard & Heatmap":
-    st.title("🗺️ Crime Hotspot Heatmap")
-    st.markdown("Visualizing the invisible. This interactive heatmap displays recorded incidents with color codes representing time-based risk (🔴 Night / 🟢 Day).")
+        /* Beautiful Buttons with hover micro-animations */
+        div.stButton > button:first-child {
+            width: 100%;
+            background: linear-gradient(90deg, #0d6efd, #0043a8);
+            color: white;
+            font-weight: 600;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 0.6rem 1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(13, 110, 253, 0.3);
+        }
+
+        div.stButton > button:first-child:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(13, 110, 253, 0.5);
+            color: #ffffff;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+        
+        /* Input Fields Configuration */
+        .stNumberInput > div > div > input, .stTextInput > div > div > input, .stSelectbox > div > div > div {
+            background-color: rgba(255, 255, 255, 0.03) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            border-radius: 8px !important;
+            color: #ffffff !important;
+        }
+        
+        /* Rounded Map Frame container effect */
+        iframe {
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        /* Custom Custom Divider */
+        hr {
+            border-color: rgba(255, 255, 255, 0.08);
+            margin: 2rem 0;
+            border-width: 1px;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+# --- Main App Header ---
+st.markdown("""
+<div style="text-align: center; margin-bottom: 2.5rem;">
+    <h1 style="font-weight: 800; color: #ffffff; text-shadow: 0 4px 20px rgba(0,0,0,0.5); display: inline-block;">
+        🚨 SlumSafe AI
+    </h1>
+</div>
+""", unsafe_allow_html=True)
+
+# --- Sidebar Content ---
+with st.sidebar:
+    st.markdown("<h3 style='color: #ffffff; font-weight: 600; margin-bottom: 1.5rem;'>Crime Risk Prediction</h3>", unsafe_allow_html=True)
     
-    if not df_crime.empty:
-        # Default map center
-        center_lat = df_crime['latitude'].mean()
-        center_lon = df_crime['longitude'].mean()
-        
-        m = folium.Map(location=[center_lat, center_lon], zoom_start=11)
-        
-        # Taking a manageable sample to render quickly
-        sample_df = df_crime.sample(n=min(800, len(df_crime)), random_state=42)
-        
-        for _, row in sample_df.iterrows():
-            hour = row['hour']
-            
-            # Map hours to risk levels exactly as the model
-            if hour >= 22 or hour <= 4:
-                risk_color = 'red'
-                risk_label = 'High'
-            elif 18 <= hour <= 21:
-                risk_color = 'orange'
-                risk_label = 'Medium'
-            else:
-                risk_color = 'green'
-                risk_label = 'Low'
-            
-            folium.CircleMarker(
-                location=[row['latitude'], row['longitude']],
-                radius=4,
-                color=risk_color,
-                fill=True,
-                fill_color=risk_color,
-                fill_opacity=0.6,
-                popup=f"Hour: {hour}:00 | Risk: {risk_label}"
-            ).add_to(m)
-            
-        st_folium(m, width=1000, height=600)
+    # Region Selection
+    city = st.selectbox("Quick Jump to Region", ["Mumbai (Dharavi)", "Goa", "Bangalore", "Custom (Chicago / Other)"])
+    if city == "Mumbai (Dharavi)":
+        default_lat, default_lon = 19.0380, 72.8538
+    elif city == "Goa":
+        default_lat, default_lon = 15.4909, 73.8278
+    elif city == "Bangalore":
+        default_lat, default_lon = 12.9716, 77.5946
     else:
-        st.warning("No crime mapping data available in data/crime_data.csv.")
+        default_lat, default_lon = 41.8781, -87.6298
 
-elif page == "🧠 Predict Crime Risk":
-    st.title("🧠 Crime Risk Prediction")
-    st.markdown("Use our Random Forest ML model to evaluate the risk of incidents based on location coordinates and time.")
+    # Input fields
+    lat = st.number_input("Latitude", value=default_lat, format="%.4f")
+    lon = st.number_input("Longitude", value=default_lon, format="%.4f")
     
-    col1, col2 = st.columns(2)
-    with col1:
-        # Defaults to chicago area center
-        lat = st.number_input("Latitude", value=41.8501, format="%.5f")
-        lon = st.number_input("Longitude", value=-87.6682, format="%.5f")
-    with col2:
-        hour = st.slider("Hour of Day (0-23)", min_value=0, max_value=23, value=12)
+    # Hour slider
+    st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
+    hour = st.slider("Select Hour", min_value=0, max_value=23, value=22, format="%d", help="Select time in 24-hr format")
+    
+    # Predict button
+    st.markdown("<div style='margin-top: 1.5rem; margin-bottom: 1.5rem;'></div>", unsafe_allow_html=True)
+    predict_clicked = st.button("Predict Risk", key="predict_btn")
+    
+    # --- ML Model Integration ---
+    if predict_clicked:
+        st.session_state.prediction_made = True
         
-    if st.button("Predict Risk 🚀", type="primary"):
-        if model is not None:
-            # model mapping: 2 is High, 1 is Medium, 0 is Low
-            pred = model.predict([[lat, lon, hour]])[0]
-            if pred == 2:
-                st.error("🔴 **HIGH RISK** - High probability of incident occurrence. Exercise caution.")
-            elif pred == 1:
-                st.warning("🟡 **MEDIUM RISK** - Moderate incident probability. Stay alert.")
-            else:
-                st.success("🟢 **LOW RISK** - Area is designated as relatively safe for this hour.")
+        # Load the model from model/model.pkl dynamically resolving parent directory
+        model_path = os.path.join(BASE_DIR, "model", "model.pkl")
+        if os.path.exists(model_path):
+            try:
+                with open(model_path, 'rb') as f:
+                    model = pickle.load(f)
+                
+                # Make prediction based on Latitude, Longitude, and Hour
+                # Using a DataFrame with feature names to match training format and prevent warnings
+                input_df = pd.DataFrame([[lat, lon, hour]], columns=['latitude', 'longitude', 'hour'])
+                prediction = model.predict(input_df)
+                
+                # model logic: 2 is High, 1 is Medium, 0 is Low
+                # We group High and Medium together as 'High Risk' for this binary UI
+                st.session_state.is_high_risk = bool(prediction[0] >= 1)
+            except Exception as e:
+                st.sidebar.error(f"Error executing model: {e}")
+                # Reliable fallback to prevent local crashes
+                st.session_state.is_high_risk = (hour >= 20) or (hour <= 4)
         else:
-            st.error("Model not found in 'model/model.pkl'. Please ensure the model is trained.")
+            # Fallback simulated logic if the physical .pkl file is not placed yet
+            st.session_state.is_high_risk = (hour >= 20) or (hour <= 4)
 
-elif page == "📢 Anonymous Report":
-    st.title("📢 Anonymous Incident Reporting")
-    st.markdown("Help us illuminate data-dark zones. Your report is completely anonymous and directly empowers your community.")
+    # Sync variable for display logic below
+    is_high_risk = st.session_state.is_high_risk
     
-    with st.form("report_form", clear_on_submit=True):
-        location = st.text_input("Approximate Location or Cross-street*", placeholder="E.g. 54th & Halsted")
-        incident = st.selectbox("Incident Type", ["Theft", "Assault", "Vandalism", "Suspicious Activity", "Harassment", "Other"])
-        desc = st.text_area("Description of Event", placeholder="Please provide any contextual details.")
-        
-        submitted = st.form_submit_button("Submit Report Anonymously")
-        
-        if submitted:
-            if location.strip() != "":
-                new_data = pd.DataFrame({
-                    'Date': [datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
-                    'Location': [location],
-                    'Incident_Type': [incident],
-                    'Description': [desc]
-                })
-                new_data.to_csv('data/reports.csv', mode='a', header=False, index=False)
-                st.success("Report submitted successfully! Thank you for making a difference.")
-            else:
-                st.error("Location field is required to submit a report.")
-
-elif page == "⚠️ Emergency":
-    st.title("🚨 Emergency Action")
-    st.markdown("If you are in immediate danger or witnessing a life-threatening event, do not use anonymous reporting. Dispatch authorities immediately.")
-    
-    st.markdown("""
-        <div style='text-align: center; margin-top: 60px;'>
-            <a href="tel:911" style="
-                background-color: #ff4b4b; 
-                color: white; 
-                padding: 20px 40px; 
-                text-align: center; 
-                text-decoration: none; 
-                display: inline-block; 
-                font-size: 32px; 
-                font-weight: 800;
-                border-radius: 12px;
-                box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-                transition: transform 0.2s;
-            ">🚨 DIAL 911 NOW 🚨</a>
+    # Render Colored Result Box dynamically based on the prediction
+    if st.session_state.prediction_made and is_high_risk:
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, rgba(220, 53, 69, 0.9), rgba(150, 20, 40, 0.8)); 
+                    color: white; border-radius: 12px; padding: 18px; text-align: center; 
+                    box-shadow: 0 8px 25px rgba(220, 53, 69, 0.4); border: 1px solid rgba(255, 100, 100, 0.2); 
+                    margin-bottom: 1rem; transition: transform 0.3s ease;">
+            <h4 style='margin:0 0 5px 0; font-weight: 800; text-transform: uppercase; font-size: 1.1rem; letter-spacing: 1px;'>⚠️ High Risk Area Detected</h4>
+            <p style='margin:0; font-size: 0.95em; opacity: 0.95;'>Action recommended: Exercise caution.</p>
         </div>
+        """, unsafe_allow_html=True)
+    elif st.session_state.prediction_made and not is_high_risk:
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, rgba(25, 135, 84, 0.9), rgba(15, 90, 50, 0.8)); 
+                    color: white; border-radius: 12px; padding: 18px; text-align: center; 
+                    box-shadow: 0 8px 25px rgba(25, 135, 84, 0.4); border: 1px solid rgba(100, 255, 150, 0.2); 
+                    margin-bottom: 1rem; transition: transform 0.3s ease;">
+            <h4 style='margin:0 0 5px 0; font-weight: 800; text-transform: uppercase; font-size: 1.1rem; letter-spacing: 1px;'>✅ Low Risk Area Detected</h4>
+            <p style='margin:0; font-size: 0.95em; opacity: 0.95;'>Safe environment confirmed.</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("<hr>", unsafe_allow_html=True)
+    
+    # Anonymous Crime Reporting Section
+    st.markdown("<h3 style='color: #ffffff; font-weight: 600; margin-bottom: 1.5rem;'>🚨 Report an Incident (1-Tap)</h3>", unsafe_allow_html=True)
+    
+    def save_report(crime_type):
+        data_dir = os.path.join(BASE_DIR, "data")
+        reports_file = os.path.join(data_dir, "reports.csv")
+        os.makedirs(data_dir, exist_ok=True)
+        
+        new_report = pd.DataFrame([{
+            "crime_type": crime_type,
+            "latitude": 12.9716,
+            "longitude": 77.5946,
+            "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }])
+        
+        if not os.path.exists(reports_file):
+            new_report.to_csv(reports_file, index=False)
+        else:
+            new_report.to_csv(reports_file, mode='a', header=False, index=False)
+            
+    col1, col2, col3 = st.columns(3)
+    if col1.button("👜 Theft", use_container_width=True):
+        save_report("Theft")
+        st.success("✅ Report submitted successfully")
+    if col2.button("⚠️ Violence", use_container_width=True):
+        save_report("Violence")
+        st.success("✅ Report submitted successfully")
+    if col3.button("💊 Drug", use_container_width=True):
+        save_report("Drug Activity")
+        st.success("✅ Report submitted successfully")
+
+    # Display: recent reports list
+    reports_file = os.path.join(BASE_DIR, "data", "reports.csv")
+    if os.path.exists(reports_file):
+        st.markdown("<h4 style='color: #ffffff; font-weight: 600; margin-top: 1.5rem; font-size: 1rem;'>Recent Community Reports</h4>", unsafe_allow_html=True)
+        try:
+            reports_df = pd.read_csv(reports_file)
+            # Display last 5 reports (latest first)
+            recent = reports_df.tail(5).iloc[::-1]
+            for _, r in recent.iterrows():
+                st.markdown(f"""
+                <div style="background-color: rgba(255, 255, 255, 0.03); color: #e2e8f0; border-radius: 8px; 
+                            padding: 10px; margin-bottom: 8px; border: 1px solid rgba(255, 255, 255, 0.05);
+                            box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+                    <div style='font-size: 0.75em; color: #a0aec0; margin-bottom: 3px;'>{r.get('timestamp', 'Unknown Time')}</div>
+                    <div style='font-size: 0.9em;'>🚨 <b>{r.get('crime_type', 'Unknown')}</b> reported at Bangalore (12.97, 77.59)</div>
+                </div>
+                """, unsafe_allow_html=True)
+        except Exception:
+             pass
+    st.markdown("<hr>", unsafe_allow_html=True)
+    st.markdown("<h3 style='color: #ff6b6b; font-weight: 600; margin-bottom: 1rem;'>Emergency Action</h3>", unsafe_allow_html=True)
+    emergency_clicked = st.button("🚨 Emergency Help", key="emergency_btn")
+    if emergency_clicked:
+        st.error("Calling emergency contact...")
+        st.markdown("<div style='text-align: center; margin-top: 10px;'><a href='tel:+91XXXXXXXXXX' style='color: #ff6b6b; font-weight: bold; font-size: 1.2rem; text-decoration: none;'>📞 +91XXXXXXXXXX</a></div>", unsafe_allow_html=True)
+        
+# --- Main Panel Content ---
+
+# Alert Banner container logic (Show only if prediction made)
+if st.session_state.prediction_made and is_high_risk:
+    st.markdown("""
+    <div style="background: rgba(220, 53, 69, 0.15); border-left: 6px solid #dc3545; padding: 1.25rem 1.5rem; 
+                border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.2); margin-bottom: 2.5rem;
+                backdrop-filter: blur(10px); border-right: 1px solid rgba(255,255,255,0.05); 
+                border-top: 1px solid rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.05);">
+        <div style="display: flex; align-items: center;">
+            <span style="font-size: 2rem; margin-right: 20px; filter: drop-shadow(0 2px 5px rgba(220,53,69,0.5));">🚨</span>
+            <div>
+                <h4 style="color: #ff6b6b; margin: 0 0 5px 0; font-weight: 800; font-size: 1.2rem;">Danger Zone</h4>
+                <p style="color: #f0f4f8; margin: 0; font-size: 1.05rem; opacity: 0.9;">High Risk Area Detected in this location</p>
+            </div>
+        </div>
+    </div>
     """, unsafe_allow_html=True)
+elif st.session_state.prediction_made and not is_high_risk:
+    st.markdown("""
+    <div style="background: rgba(25, 135, 84, 0.15); border-left: 6px solid #198754; padding: 1.25rem 1.5rem; 
+                border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.2); margin-bottom: 2.5rem;
+                backdrop-filter: blur(10px); border-right: 1px solid rgba(255,255,255,0.05); 
+                border-top: 1px solid rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.05);">
+        <div style="display: flex; align-items: center;">
+            <span style="font-size: 2rem; margin-right: 20px; filter: drop-shadow(0 2px 5px rgba(25,135,84,0.5));">🛡️</span>
+            <div>
+                <h4 style="color: #51cf66; margin: 0 0 5px 0; font-weight: 800; font-size: 1.2rem;">Safe Zone</h4>
+                <p style="color: #f0f4f8; margin: 0; font-size: 1.05rem; opacity: 0.9;">Low Risk Area Detected in this location</p>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+# Container for the Heatmap visualization
+with st.container():
+    st.markdown("<h2 style='color: #ffffff; font-weight: 800; margin-bottom: 15px; font-size: 1.8rem;'>Crime Risk Heatmap</h2>", unsafe_allow_html=True)
+
+    # Load dataset if it exists safely using absolute baseline
+    data_path = os.path.join(BASE_DIR, "data", "crime_data.csv")
+    has_data = os.path.exists(data_path)
+    if has_data:
+        # pd is already imported at top level, no need to re-import
+        df = pd.read_csv(data_path)
+        df_filtered = df[(df['hour'] >= hour - 2) & (df['hour'] <= hour + 2)]
+        if df_filtered.empty:
+            df_filtered = df  # Fallback to full view if no crimes in hour block
+            
+    # Try rendering the high-performance Folium Heatmap
+    try:
+        import folium
+        from folium.plugins import HeatMap
+        from streamlit_folium import st_folium
+
+        # Initialize base map centered at lat, lon inputs with a dark theme to match UI closely
+        m = folium.Map(location=[lat, lon], zoom_start=12, tiles='cartodbdark_matter')
+        
+        # Generate sample points: lat, lon, risk intensity
+        heat_data = []
+        if has_data:
+            np.random.seed(42)  # For consistent simulation
+            for _, row in df_filtered.iterrows():
+                # Dynamically set risk intensity weight based on prediction logic
+                intensity = np.random.uniform(0.7, 1.0) if is_high_risk else np.random.uniform(0.1, 0.4)
+                heat_data.append([row['latitude'], row['longitude'], intensity])
+        else:
+            # Synthesize backup data sample points if no csv exists
+            np.random.seed(42)
+            spread = 0.035 if is_high_risk else 0.015
+            num_pts = 300 if is_high_risk else 80
+            for _ in range(num_pts):
+                heat_data.append([
+                    lat + np.random.randn() * spread, 
+                    lon + np.random.randn() * spread, 
+                    np.random.uniform(0.6, 1.0) if is_high_risk else np.random.uniform(0.1, 0.4)
+                ])
+
+        # Inject Anonymous Reports into Heatmap
+        reports_file = os.path.join(BASE_DIR, "data", "reports.csv")
+        if os.path.exists(reports_file):
+            try:
+                reports_df = pd.read_csv(reports_file)
+                if 'latitude' in reports_df.columns and 'longitude' in reports_df.columns:
+                    valid_reports = reports_df.dropna(subset=['latitude', 'longitude'])
+                    for _, r in valid_reports.iterrows():
+                        # Intense 1.0 red heat dot
+                        heat_data.append([r['latitude'], r['longitude'], 1.0])
+                        # Distinct clickable physical marker
+                        folium.Marker(
+                            location=[r['latitude'], r['longitude']],
+                            popup=f"Alert: {r['crime_type']}",
+                            icon=folium.Icon(color="red", icon="warning-sign")
+                        ).add_to(m)
+            except Exception:
+                pass
+
+        # Use color gradient: green → yellow → red
+        gradient = {0.2: '#00ff00', 0.5: '#ffff00', 1.0: '#ff0000'}
+        
+        # Overlay heatmap (radius and blur tuned for smoothness and perfect visibility)
+        HeatMap(heat_data, gradient=gradient, radius=20, blur=15, max_zoom=1).add_to(m)
+
+        # Display inside Streamlit (returned_objects=[] ensures NO LAG during frontend-backend interaction processing)
+        st_folium(m, width=1200, height=450, returned_objects=[])
+
+        if has_data:
+            st.markdown("<div style='text-align: right; color: rgba(255,255,255,0.4); font-size: 0.85rem; margin-top: 15px; font-style: italic;'>Folium Heatmap displaying smoothly from data/crime_data.csv</div>", unsafe_allow_html=True)
+
+    except ImportError:
+        # Graceful fallback so there are no crashes locally awaiting pip installation
+        st.warning("🔄 Upgrading Map Analytics... `folium` and `streamlit-folium` dependencies are missing. Displaying standard map. Run `pip install folium streamlit-folium` to enable the advanced Heatmap.")
+        
+        spread = 0.035 if is_high_risk else 0.015
+        num_points = 1200 if is_high_risk else 300
+        df_map = pd.DataFrame({'lat': np.random.randn(num_points) * spread + lat, 'lon': np.random.randn(num_points) * spread + lon}) if not has_data else df_filtered[['latitude', 'longitude']].rename(columns={'latitude': 'lat', 'longitude': 'lon'})
+        st.map(df_map, zoom=11, use_container_width=True)

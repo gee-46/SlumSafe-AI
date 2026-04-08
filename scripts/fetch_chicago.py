@@ -39,7 +39,10 @@ df_extracted = df_extracted.dropna()
 
 print(f"Cleaned data rows remaining: {len(df_extracted)}")
 
-output_path = 'data/crime_data.csv'
+import os
+base_dir = os.path.dirname(os.path.abspath(__file__))
+output_path = os.path.join(base_dir, 'data', 'crime_data.csv')
+os.makedirs(os.path.dirname(output_path), exist_ok=True)
 df_extracted.to_csv(output_path, index=False)
 print(f"Saved real Chicago dataset to {output_path} with keys: latitude, longitude, hour")
 

@@ -5,7 +5,9 @@ import os
 
 def train_model():
     print("Loading data...")
-    df = pd.read_csv('data/crime_data.csv')
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    data_path = os.path.join(base_dir, 'data', 'crime_data.csv')
+    df = pd.read_csv(data_path)
     
     # Create target column "risk" with 3 distinct classes mapping to README
     def determine_risk(h):
@@ -28,17 +30,22 @@ def train_model():
     model.fit(X, y)
     
     print("Saving model...")
-    os.makedirs('model', exist_ok=True)
-    with open('model/model.pkl', 'wb') as f:
+    model_dir = os.path.join(base_dir, 'model')
+    os.makedirs(model_dir, exist_ok=True)
+    
+    model_path = os.path.join(model_dir, 'model.pkl')
+    with open(model_path, 'wb') as f:
         pickle.dump(model, f)
         
-    print("Model successfully trained and saved to model/model.pkl")
+    print(f"Model successfully trained and saved to {model_path}")
 
 def predict_risk(lat, lon, hour):
     """
     Predicts if the risk is high, medium, or low for a given location and hour.
     """
-    with open('model/model.pkl', 'rb') as f:
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    model_path = os.path.join(base_dir, 'model', 'model.pkl')
+    with open(model_path, 'rb') as f:
         model = pickle.load(f)
     
     # Using a nested list as input matches sklearn expectations without pandas overhead

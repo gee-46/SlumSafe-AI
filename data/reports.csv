@@ -1,2 +1,7 @@
-Date,Location,Incident_Type,Description
-2026-04-08 16:48:09,Church street,Theft,
+crime_type,latitude,longitude,timestamp
+Violence,12.9716,77.5946,2026-04-08 18:14:16
+Theft,12.9716,77.5946,2026-04-08 18:14:25
+Theft,12.9716,77.5946,2026-04-08 18:15:26
+Violence,12.9716,77.5946,2026-04-08 18:15:31
+Drug Activity,12.9716,77.5946,2026-04-08 18:15:33
+Drug Activity,12.9716,77.5946,2026-04-08 18:21:19
