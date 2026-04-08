@@ -459,10 +459,12 @@ if st.session_state.prediction_made and risk_level == 2:
     st.markdown("<hr>", unsafe_allow_html=True)
     st.markdown("<h3 style='color: #ff6b6b; font-weight: 600; margin-bottom: 1rem;'>🚨 Local Emergency Contact</h3>", unsafe_allow_html=True)
     
-    # Prioritize the location currently being viewed/predicted on the map
-    # This ensures that when a user "Quick Jumps" to Mumbai, they see Mumbai help.
-    u_lat, u_lon = lat, lon
+    # Prioritize TRUE Live GPS for the emergency contact, fallback to sidebar focus
+    u_lat = loc['coords']['latitude'] if (loc and 'coords' in loc) else lat
+    u_lon = loc['coords']['longitude'] if (loc and 'coords' in loc) else lon
+    
     responder = get_nearest_responder(u_lat, u_lon)
+    is_gps_tracked = (loc is not None and 'coords' in loc)
     
     if responder is not None:
         st.markdown(f"""
@@ -471,6 +473,9 @@ if st.session_state.prediction_made and risk_level == 2:
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
                     <h4 style="color: #ffc107; margin: 0; font-size: 1.25rem;">{responder['contact_name']}</h4>
+                    <div style="font-size: 0.75rem; color: #51cf66; margin-top: 4px; font-weight: 800;">
+                        {'📍 LIVE GPS TRACKING ACTIVE' if is_gps_tracked else '🗺️ SYNCED TO MAP VIEW'}
+                    </div>
                     <p style="color: #e2e8f0; margin: 5px 0 0 0; font-size: 0.95rem;">Nearest responder for area: <b>{responder['area']}</b></p>
                     <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 1.15rem; font-weight: 700;">📞 {responder['phone']}</p>
                 </div>
