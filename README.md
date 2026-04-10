@@ -248,6 +248,16 @@ streamlit run app.py
 
 ---
 
+## 🏆 Hackathon Achievement
+
+```bash
+Event        : InnovateX 4.0 (International Tech Fest @ Presidency)
+Track        : Build With AI (24-Hour Hackathon)
+Team         : PulseX
+Result       : 🏅 Secured 4th Place
+Competition  : 100+ Teams
+
+```
 ## 🏆 Hackathon Context
 
 
