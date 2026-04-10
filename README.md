@@ -2,8 +2,10 @@
 
 ### Making Invisible Crime Visible & Predictable
 
+
+
 <p align="center">
-  <img src="https://img.shields.io/badge/Hackathon-InnovateX%204.0-blue?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Hackathon-InnovateX%204.0%20(International%20Tech%20Fest%20@%20Presidency)-blue?style=for-the-badge" />
   <img src="https://img.shields.io/badge/Track-Build%20With%20AI-black?style=for-the-badge" />
   <img src="https://img.shields.io/badge/Python-3.10+-yellow?style=for-the-badge&logo=python" />
   <img src="https://img.shields.io/badge/Streamlit-App-red?style=for-the-badge&logo=streamlit" />
@@ -13,6 +15,8 @@
 <p align="center">
   <b>Transforming data-dark zones into actionable intelligence using AI</b>
 </p>
+
+> 🏆 4th place out of 100+ teams at InnovateX 4.0 (International Tech Fest @ Presidency)
 
 ---
 
